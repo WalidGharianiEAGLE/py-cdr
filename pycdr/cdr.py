@@ -1,19 +1,76 @@
-import operator
 import requests
 from typing import List
 from datetime import datetime, timedelta
 
 from bs4 import BeautifulSoup
 
+
+def generate_date_range(start:str, end:str, freq='1D') -> List[str]:
+    """Generate a list of dates within the specified range.
+    Args:
+        start (str): The start date in 'YYYY-MM-DD' format.
+        end (str): The end date in 'YYYY-MM-DD' format.
+        freq (str, optional): The frequency of dates. Defaults to '1D' (daily).
+
+    Returns:
+        List[str]: A list of date strings in 'YYYYMMDD' format.
+    """
+    dates_period = []
+    current_date = start
+    while current_date <= end:
+        dates_period.append(current_date.strftime('%Y%m%d'))
+        current_date += timedelta(days=freq)
+    return dates_period
+
+
+class DateDescriptor:
+    """ Descriptor for managing date attributes."""
+
+    def __init__(self, param) -> None:
+        self.param = param
+        
+    def __get__(self, obj, type=None):
+        if obj is None:
+            return self
+        return obj.__dict__[self.param]
+    
+    def __set__(self, obj, val):
+        try:
+            date = datetime.strptime(val, '%Y-%m-%d')
+            obj.__dict__[self.param] = date
+        except Exception as e:
+            raise ValueError(f"{self.param} must be a string in a '%Y-%m-%d' format") from e
+            
+            
 class CDRApi:
-    _VALID_DATASETS = {'AVHRR_VIIRS_NDVI_V5', 'AVHRR_LAI_FAPAR_V5'}
+    """
+    An API for accessing climate data records.
+
+    Args:
+        start_date (str): The start date in 'YYYY-MM-DD' format.
+        end_date (str): The end date in 'YYYY-MM-DD' format.
+        dataset (str): The dataset name.
+
+    Attributes:
+        start_date (datetime): The start date as a datetime object.
+        end_date (datetime): The end date as a datetime object.
+        dataset (str): The dataset name.
+        dataset_urls (list): List of URLs for dataset access.
+        dataset_info (dict): Dictionary containing dataset information.
+    """
+    
+    _VALID_DATASETS = {'AVHRR_VIIRS_NDVI_V5':'https://www.ncei.noaa.gov/thredds/dodsC/cdr/ndvi/', 
+                       'AVHRR_LAI_FAPAR_V5': 'https://www.ncei.noaa.gov/thredds/dodsC/cdr/lai/'}
+    
+    start_date = DateDescriptor("start_date")
+    end_date = DateDescriptor("end_date")
 
     def __init__(self, start_date: str, end_date: str, dataset: str):
         self.start_date = start_date
         self.end_date = end_date 
-        self.dataset = dataset
-        self.dataset_urls = []
-        self.dataset_info = {}
+        self._dataset = dataset
+        self._dataset_urls = []
+        self._dataset_info = {}
 
     def _generate_date_range(self) -> List[str]:
         dates_period = []
@@ -24,17 +81,16 @@ class CDRApi:
         return dates_period
 
     def _connect_thredds(self, year: int) -> BeautifulSoup:
-        if self.dataset not in self._VALID_DATASETS:
-            raise ValueError(f'Invalid dataset: {self.dataset}')
-        noaa_thredds = f'https://www.ncei.noaa.gov/thredds/catalog/cdr/ndvi/{year}/catalog.html'
+        url_thredds = self.get_valid_datasets().get(self.dataset).replace('/dodsC', '')+str(year)+'/catalog.html'
         try:
-            page = requests.get(f"{noaa_thredds}")
+            page = requests.get(f"{url_thredds}")
+
         except requests.RequestException as e:
             raise 
         return BeautifulSoup(page.content, 'html.parser')  
 
     def query(self, return_urls=False) -> List[str]:
-        base_url = 'https://www.ncei.noaa.gov/thredds/dodsC/cdr/ndvi/'
+        base_url = self._VALID_DATASETS.get(self.dataset)
         data_urls = []
         start_year = self.start_date.year
         end_year = self.end_date.year
@@ -46,7 +102,7 @@ class CDRApi:
             nc_valid = [n for n in nc_links if any(date in n for date in date_range)]
             year_urls = [f'{base_url}{year}/{id}' for id in nc_valid]
             data_urls.extend(year_urls)
-        self.dataset_urls = data_urls
+        self._dataset_urls = data_urls
         if return_urls:
             return data_urls
         
@@ -75,52 +131,45 @@ class CDRApi:
 
         return attributes
 
-    def info(self, return_info=False):
-        ids = [url.split('/')[-1][:-3] for url in self.dataset_urls]
+    def info(self, url_id= None, return_info=False):
+        if url_id is None:
+            ids = [url.split('/')[-1][:-3] for url in self.dataset_urls]
+        else:
+            ids = [url_id]
         all_attributes_dict = {}
         for url, id_ in zip(self.dataset_urls, ids):
             das_url = f'{url}.das'
+            try:
+                response = requests.get(das_url)
+            except OSError:
+                raise ConnectionError ('InvalidURL')
             response = requests.get(das_url)
             das_content = response.text
             attributes = self._parse_das_content(das_content, id_)
             all_attributes_dict[id_] = attributes
-            
-            self.dataset_info = all_attributes_dict
+            self._dataset_info = all_attributes_dict
         if return_info:
             return all_attributes_dict
     
-    start_date =  property(operator.attrgetter('_start_date'))
-    @start_date.setter
-    def start_date(self, value):
-        try:
-            date = datetime.strptime(value, '%Y-%m-%d')
-            self._start_date = date
-        except Exception as e:
-            raise TypeError(f"'start_date' must be a string in a '%Y-%m-%d' format") from e
+    @property
+    def dataset(self): return self._dataset
     
-    end_date =  property(operator.attrgetter('_end_date'))
-    @end_date.setter
-    def end_date(self, value):
-        try:
-            date = datetime.strptime(value, '%Y-%m-%d')
-            self._end_date = date
-        except Exception as e:
-            raise TypeError(f"'end_date' must be a string in a '%Y-%m-%d' format") from e
-
+    @dataset.setter
+    def dataset(self, val):
+        if val not in self._VALID_DATASETS:
+            raise ValueError(f'Invalid dataset: {val}. Valid dataset are the following:{self._VALID_DATASETS.keys()}')
+        self._dataset = val
     
-    dataset_urls =  property(operator.attrgetter('_dataset_urls'))
-    @dataset_urls.setter
-    def dataset_urls(self, value):
-        if not isinstance(value, list):
-            raise AttributeError (f'dataset_urls must be a list')
-        self._dataset_urls = value
-
-    dataset_info =  property(operator.attrgetter('_dataset_info'))
-    @dataset_info.setter
-    def dataset_info(self, value):
-        if not isinstance(value, dict):
-            raise AttributeError (f'dataset_info must be a dict')
-        self._dataset_info = value
+    @property
+    def dataset_urls(self): return self._dataset_urls
+    
+    @property
+    def dataset_info(self):
+        return self._dataset_info        
+    
+    @classmethod
+    def get_valid_datasets(cls):
+        return cls._VALID_DATASETS
     
     @classmethod
     def from_dict(cls, dict_args):

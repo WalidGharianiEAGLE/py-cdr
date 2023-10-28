@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
 
-def generate_date_range(start:str, end:str, freq='1D') -> List[str]:
+def generate_date_range(start:str, end:str, freq=1) -> List[str]:
     """Generate a list of dates within the specified range.
     Args:
         start (str): The start date in 'YYYY-MM-DD' format.
@@ -72,14 +72,6 @@ class CDRApi:
         self._dataset_urls = []
         self._dataset_info = {}
 
-    def _generate_date_range(self) -> List[str]:
-        dates_period = []
-        current_date = self.start_date
-        while current_date <= self.end_date:
-            dates_period.append(current_date.strftime('%Y%m%d'))
-            current_date += timedelta(days=1)
-        return dates_period
-
     def _connect_thredds(self, year: int) -> BeautifulSoup:
         url_thredds = self.get_valid_datasets().get(self.dataset).replace('/dodsC', '')+str(year)+'/catalog.html'
         try:
@@ -98,7 +90,7 @@ class CDRApi:
         for year in range(start_year, end_year + 1):
             soup = self._connect_thredds(year)
             nc_links = [link.text.strip() for link in soup.select('a') if 'nc' in link.text]
-            date_range = self._generate_date_range()
+            date_range = generate_date_range(self.start_date, self.end_date) 
             nc_valid = [n for n in nc_links if any(date in n for date in date_range)]
             year_urls = [f'{base_url}{year}/{id}' for id in nc_valid]
             data_urls.extend(year_urls)

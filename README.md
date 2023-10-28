@@ -15,7 +15,7 @@ CDRApi will be installed using pip
 ## Usage
 
 ```python
-from cdra pi import CDRApi
+from pyscdr.cdr import CDRApi
 
 # Create an instance of CDRApi
 api = CDRApi(start_date='2022-01-01', end_date='2022-01-10', dataset='AVHRR_VIIRS_NDVI_V5')

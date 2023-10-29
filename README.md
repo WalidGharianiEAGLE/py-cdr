@@ -1,4 +1,4 @@
-# pycdr - Climate Data Records API
+# py-cdr - Climate Data Records API
 
 This is a small project in progress. pycdr provides an API for accessing climate data records from the National Centers for Environmental Information (NCEI) hosted datasets. With pycdr, you can easily query datasets, retrieve dataset URLs, and access dataset information.
 
@@ -10,7 +10,7 @@ This is a MVP that provides some dataset to retrieve:
 
 ## Installation
 
-CDRApi will be installed using pip
+pycdr will be installed using pip
 
 ## Usage
 

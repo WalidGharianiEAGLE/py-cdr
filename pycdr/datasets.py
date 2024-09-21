@@ -2,7 +2,7 @@ from enum import Enum
 
 class Datasets(Enum):
     AVHRR_VIIRS_NDVI_V5 = "https://www.ncei.noaa.gov/thredds/dodsC/cdr/ndvi/"
-    AVHRR_LAI_FAPAR_V5 = "https://www.ncei.noaa.gov/thredds/dodsC/cdr/lai/"
+    AVHRR_VIIRS_LAI_FAPAR_V5 = "https://www.ncei.noaa.gov/thredds/dodsC/cdr/lai/"
     AVHRR_VIIRS_SURFACE_REFLECTANCE = "https://www.ncei.noaa.gov/thredds/dodsC/cdr/surface-reflectance/"
     AVHHR_AOT_DAILY = "https://www.ncei.noaa.gov/thredds/dodsC/cdr/avhrr-aot-daily/"
     PERSIANN = "https://www.ncei.noaa.gov/thredds/dodsC/cdr/persiann/"

@@ -9,7 +9,7 @@ This is a MVP that provides some dataset to retrieve:
 - [x] AVHRR VIIRS Surface Reflectance
 - [ ] Add more dataset (Incomplete)
 
-## Installation
+## Installation.
 
 pycdr will be installed using pip
 

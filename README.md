@@ -6,7 +6,7 @@ This is a MVP that provides some dataset to retrieve:
 
 - [x] AVHRR and VIIRS NDVI
 - [x] Leaf Area Index & Fraction of Absorbed Photosynthetically Active Radiation (LAI FAPAR)
-- [x] AVHRR VIIRS Surface Reflectance
+- [x] AVHRR VIIRS Surface Reflectance.
 - [ ] Add more dataset (Incomplete)
 
 ## Installation.
